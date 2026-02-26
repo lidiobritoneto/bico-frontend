@@ -1,17 +1,34 @@
-# ---------- BUILD ----------
-FROM ghcr.io/cirruslabs/flutter:stable AS build
-WORKDIR /app
+# ---------- STAGE 1: BUILD FLUTTER WEB ----------
+FROM debian:bookworm-slim AS build
 
+RUN apt-get update && apt-get install -y \
+  git curl unzip xz-utils ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+# Flutter (stable)
+RUN git clone https://github.com/flutter/flutter.git /flutter
+ENV PATH="/flutter/bin:/flutter/bin/cache/dart-sdk/bin:${PATH}"
+
+RUN flutter --version
+RUN flutter config --enable-web
+
+WORKDIR /app
 COPY . .
 
 RUN flutter pub get
 RUN flutter build web --release
 
-# ---------- RUN ----------
-FROM node:20-alpine
+# ---------- STAGE 2: SERVE STATIC FILES ----------
+FROM node:20-alpine AS runner
 WORKDIR /app
-RUN npm i -g serve
+
+# copia o build do flutter
 COPY --from=build /app/build/web ./build/web
 
+# 'serve' pra servir SPA e respeitar $PORT do Render
+RUN npm i -g serve
+
+ENV PORT=10000
 EXPOSE 10000
-CMD ["serve", "-s", "build/web", "-l", "10000"]
+
+CMD ["sh", "-c", "serve build/web -l ${PORT} --single"]
