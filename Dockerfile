@@ -31,4 +31,4 @@ RUN npm i -g serve
 ENV PORT=10000
 EXPOSE 10000
 
-CMD ["sh", "-c", "serve build/web -l ${PORT} --single"]
+CMD serve build/web -l 10000 --single
